@@ -6,10 +6,16 @@ int PLAYER = 1;
 int data;
 int scene = 0;
 int P=0;
+float diff = 0;
 int[] I = new int[4];
 boolean[] receive = new boolean[4];
 String[] cltIp= new String[4];
 Thread[] read = new Thread[PLAYER];
+float[][] lineX = new float[PLAYER][500];
+float[] lineY = new float[PLAYER];
+float step = 2.5;
+int I2 = 0;
+int plyCnt =0; //接続してきた人数
 
 Server[] server = new Server[PLAYER];
 Client[] client = new Client[PLAYER];
@@ -17,64 +23,66 @@ Client[] client = new Client[PLAYER];
 
 class Notes {
   int player;
-  float step = 2.5;
   float rectX, rectY, rectD;
-  float lineX, lineY;
   int appear = 0;
   int nn;
   long tick;
+  String str;
+  byte[] b;
 
-  Notes(int p, float x, float y, int d, float x2, float y2, long t) {
+  Notes(int p, float x, float y, int d, long t) {
     player = p;
     rectX=x;
     rectY=y;
     rectD=d;
-    lineX=x2;
-    lineY=y2;
     tick=t;
   }
 
   void drawNotes() {
-    // if (appear<3) {
-    if (rectX+rectD > 0) {
-      if (appear<=2) {
-        if (player==0) {
-          stroke(255, 0, 0);
-          fill(255, 0, 0, 100);
-        } else if (player==1) {
-          stroke(0, 255, 0);
-          fill(0, 255, 0, 100);
-        } else if (player==2) {
-          stroke(0, 0, 255);
-          fill(0, 0, 255, 100);
-        }
-        rect(rectX, rectY, rectD, 30);
-        stroke(0);
-        strokeWeight(1.5);
-        line(lineX, lineY, lineX, lineY+120);
-      }
-    } else {
-      appear=2;
+    if (rectX <= width && appear<=2) {
+      strokeWeight(0.8);
+      if (player==0) {
+      stroke(255, 0, 0);
+      fill(255, 0, 0, 100);
+    } else if (player==1) {
+      stroke(0, 255, 0);
+      fill(0, 255, 0, 100);
+    } else if (player==2) {
+      stroke(0, 0, 255);
+      fill(0, 0, 255, 100);
+    }
+      rect(rectX, rectY, rectD, 30);
     }
   }
 
   void moveNotes() {
-    rectX-=step;
-    lineX-=step;
+    if (appear == 2) {
+      rectD-=step;
+    } else {
+      rectX-=step;
+    }
+    if (rectX+rectD < 0 || appear==2 && rectX >= rectD) {
+      appear=3;
+    }
   }
+
 
   //ノートナンバーを送る
   void sendNum() {
     if (this.appear==1) {
       println("ok");
       println(tick);
-      String str = String.valueOf(nn)+String.valueOf(tick);
+      str = String.valueOf(nn)+String.valueOf(tick);
       println(str);
       //int a = nn*1000+(int)tick;
       //println(a);
-      byte[] b = str.getBytes();
+      b = str.getBytes();
       server[player].write(b);
       this.appear=2;
+
+      diff=(40-rectX);
+      rectD-=diff;
+      rectX=40;
     }
   }
 
@@ -88,6 +96,7 @@ class Notes {
 
 Notes[][] notes;
 GetNote[] note;
+
 
 void setup() {
   //fullScreen();
@@ -104,32 +113,42 @@ void setup() {
   notes = new Notes[PLAYER][1000];
   note = new GetNote[PLAYER];
 
-  int start = width;
-  int start2 = width; 
+  int start = width; 
   int d = QUARTER; //音の長さ
   int y0 = 25; //ひとつ前の音の高さ(場所)
   int y = 25;
   int k;
-  int part = 0;
   int high = 25;
   int low = 160;
   long tick = d;
+
+  lineY[0]=high;
+
+  for (int p = 0; p < PLAYER; p++) {
+    lineX[p][0]=width;
+    if (p>0) {
+      lineY[p]=lineY[p-1]+200;
+    }
+    for (int i = 1; i < 500; i++) {
+      lineX[p][i]=lineX[p][i-1]+QUARTER*4;
+    }
+  }
 
   for (int p = 0; p < PLAYER; p++) {
     read[p] = new Thread(new Read(p));
     receive[p]=false;
     note[p] = new GetNote();
-    for (int i = 0; i < note[p].getNoteNum()[part].length; i++) {
+    for (int i = 0; i < note[p].getNoteNum()[p].length; i++) {
 
-      if (note[p].getNoteNum()[part][i]==-1) {
-        i=note[p].getNoteNum()[part].length;
+      if (note[p].getNoteNum()[p][i]==-1) {
+        i=note[p].getNoteNum()[p].length;
       } else {
         if (i==0) {
           //基準の音
-          //y=175-15*((note[p].getNoteNum()[part][i]%12)/2)-15;
-          y=low-15*((note[p].getNoteNum()[part][i]%12)/2);
+          //y=175-15*((note[p].getNoteNum()[p][i]%12)/2)-15;
+          y=low-15*((note[p].getNoteNum()[p][i]%12)/2);
         } else {
-          k=note[p].getNoteNum()[part][i]-note[p].getNoteNum()[part][i-1];
+          k=note[p].getNoteNum()[p][i]-note[p].getNoteNum()[p][i-1];
           if (abs(k)!=1) {
             k/=2;
           }
@@ -145,21 +164,18 @@ void setup() {
             y+=105;
           }
         }
-        tick = note[p].getNoteLen()[part][i];
+        tick = note[p].getNoteLen()[p][i];
         d=int(tick/4);
 
-        notes[p][i]=new Notes(p, start, y, d, start2, high, tick);
-        notes[p][i].nn=note[p].getNoteNum()[part][i];
-        start+=d+int(note[p].getRest()[part][i+1]/4);
-        start2+=QUARTER*4;
+        notes[p][i]=new Notes(p, start, y, d, tick);
+        notes[p][i].nn=note[p].getNoteNum()[p][i];
+        start+=d+int(note[p].getRest()[p][i+1]/4);
         y0=y;
       }
     }
     high+=200;
     low+=200;
     start=width;
-    start2 = width;
-    part++;
     read[p].start();
   }
   thread("sendNotes");
@@ -174,67 +190,65 @@ void staff(int y) {
   }
 }
 
+void startScreen() {
+  fill(0);
+  textSize(23);
+  text("PLAYER:"+plyCnt, width/2-50, height/2);
+}
+
 void draw() {
   background(255);
   if (scene==0) {
-    fill(0);
-    textSize(23);
-    text("PLAYER:", width/2-50, height/2);
+    startScreen();
   }
   if (scene==1) {
+    drawScore();
+    
     stroke(255, 0, 0);
     strokeWeight(1.5);
     line(40, 0, 40, height);
-
-    for (int i=0; i < 3; i++) { 
-      staff(25+i*200);
-    }
-
-    drawScore();
-    //int part = 0;
-    //for (int player = 0; player < PLAYER; player++) {
-    //  //for (int i = I[player]; i < note[player].getNoteNum()[part].length; i++) {
-    //  for (int i = I[player]; i < I[player]+20; i++) {
-    //    if (note[player].getNoteNum()[part][i]==-1) { 
-    //      i=note[player].getNoteNum()[part].length; //break
-    //    } else {
-    //      notes[player][i].over();
-    //      notes[player][i].drawNotes();
-    //      notes[player][i].moveNotes();
-    //      notes[player][i].sendNum();
-    //      if (notes[player][i].appear==2) {
-    //        I[player]=i;
-    //        println(i);
-    //      }
-    //    }
-    //  }
-    //  part++;
-    //}
   }
 }
 
+
+void moveLines(int player) {
+  stroke(0);
+  strokeWeight(1.5);
+  //for (int player = 0; player < PLAYER; player++) {
+    for (int i = I2; i < 500; i++) {
+      if (lineX[player][i] >= 0) {
+        if (I2+3 > i && lineX[player][i] <= width) {
+          line(lineX[player][i], lineY[player], lineX[player][i], lineY[player]+120);
+        }
+        lineX[player][i]-=step;
+      } else {
+        I2=i;
+      }
+    }
+  //}
+}
+
 void drawScore() {
-  int part = 0;
   for (int player = 0; player < PLAYER; player++) {
-    for (int i = I[player]; i < note[player].getNoteNum()[part].length; i++) {
-      if (note[player].getNoteNum()[part][i]==-1) { 
-        i=note[player].getNoteNum()[part].length; //break
+    moveLines(player);
+    staff(25+player*200);
+    for (int i = I[player]; i < note[player].getNoteNum()[player].length; i++) {
+      if (note[player].getNoteNum()[player][i]==-1) { 
+        i=note[player].getNoteNum()[player].length; //break
       } else {
         notes[player][i].drawNotes();
         notes[player][i].moveNotes();
       }
     }
-    part++;
   }
 }
 
 void sendNotes() {
   while (true) {
-    int part = 0;
     for (int player = 0; player < PLAYER; player++) {
       for (int i = I[player]; i < I[player]+20; i++) {
-        if (note[player].getNoteNum()[part][i]==-1) { 
-          i=note[player].getNoteNum()[part].length; //break
+        if (note[player].getNoteNum()[player][i]==-1) { 
+          i=note[player].getNoteNum()[player].length; //break
         } else {
           notes[player][i].over();
           notes[player][i].sendNum();
@@ -244,13 +258,13 @@ void sendNotes() {
           }
         }
       }
-      part++;
     }
   }
 }
 
 void serverEvent(Server evtServer, Client conClient ) {
   println(conClient.ip()+"から接続");
+  plyCnt++;
 }
 
 class Read implements Runnable {
