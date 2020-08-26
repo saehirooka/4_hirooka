@@ -86,22 +86,13 @@ public class Recorder {
                     }
                 } else {
                     //if (diff < -10) {
-                    if(diff < -4) {
+                    if (diff < -4) {
                         on = false;
-                        //System.out.println("noteoff!");
                     }
-         //       }
-//                }else{
-//                    on=false;
-//                }
-                //System.out.println("on:"+on);
+                }
+
                 pre = db;
-                    try {
-                        Thread.sleep(110);
-                    } catch(InterruptedException e){
-                        e.printStackTrace();
-                    }
-            }
+
 
          }
 
