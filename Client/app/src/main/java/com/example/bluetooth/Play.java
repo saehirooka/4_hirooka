@@ -92,15 +92,20 @@ public class Play implements Runnable{
             if(noteon==true) {
                 volume();
             }
+            try {
+                Thread.sleep(100);
+            } catch(InterruptedException e){
+                e.printStackTrace();
+            }
         }
     }
 
     synchronized void detectionBreath() {
-        try {
-            wait(10);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+//        try {
+//            wait(10);
+//        } catch (InterruptedException e) {
+//            e.printStackTrace();
+//        }
         if (plyAct.touch == true) {
            // if (noteon == false) {
                 if (notenum == 0 && n==0) {
@@ -113,7 +118,7 @@ public class Play implements Runnable{
                     receive();
                     n=2;
                 }
-                if(notenum!=0) {
+                if(n==2 && notenum!=0) {
                     if(len <= 240) { //連符の合図が来たらタッチだけで音　音量だけ指定 240　八分音符以下
                         noteon();
                     }else {
@@ -149,6 +154,7 @@ public class Play implements Runnable{
 
                 noteon = true;
                 System.out.println("noteon"+noteon);
+                n=3;
            // }
         //}
     }
@@ -161,6 +167,11 @@ public class Play implements Runnable{
         noteon = false;
         notenum = 0;
         n=0;
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     void volume() {
@@ -182,11 +193,6 @@ public class Play implements Runnable{
             }
 
             midiEventSender.sendControlChange(0, 0, 11, vel);
-        }
-        try {
-            Thread.sleep(80);
-        } catch(InterruptedException e){
-            e.printStackTrace();
         }
     }
 }
