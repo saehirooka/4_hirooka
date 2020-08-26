@@ -52,7 +52,7 @@ public class PlayActivity extends AppCompatActivity {
                 touch = true;
                 play.noteoff();
                 try {
-                    Thread.sleep(40);
+                    Thread.sleep(100);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -63,7 +63,6 @@ public class PlayActivity extends AppCompatActivity {
                 touch = false;
             }
 
-            notify();
         return true;
     }
 
